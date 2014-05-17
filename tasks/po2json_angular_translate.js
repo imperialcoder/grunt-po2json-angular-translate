@@ -67,7 +67,6 @@ module.exports = function(grunt) {
           replace.push(m);
           m = keyReplaceRegex.exec(translation);
          }
-         //angular.forEach(replace, replacePlaceholders);
         for(var i = 0; i < replace.length; i++) {
             translation = replaceKeysInMessage(translation, table, keyReplaceRegex, replace[i]);
         }
