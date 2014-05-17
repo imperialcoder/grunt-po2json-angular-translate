@@ -55,6 +55,25 @@ module.exports = function(grunt) {
         }
         return string;
     };
+    
+    var replaceKeysInMessage = function(translation, table, keyReplaceRegex, replacement) {           
+       if(replacement) {
+        translation = translation.replace(replacement[0], table[replacement[1]]);
+       }
+      var m = keyReplaceRegex.exec(translation),
+        replace = [];
+       if (m !== null) {
+         while (m !== null) {
+          replace.push(m);
+          m = keyReplaceRegex.exec(translation);
+         }
+         //angular.forEach(replace, replacePlaceholders);
+        for(var i = 0; i < replace.length; i++) {
+            translation = replaceKeysInMessage(translation, table, keyReplaceRegex, replace[i]);
+        }
+       }
+       return translation;
+    };
 
     grunt.registerMultiTask('po2json_angular_translate', 'grunt plugin to convert po to angangular-translate format', function() {
         var options = this.options({
@@ -65,7 +84,8 @@ module.exports = function(grunt) {
             stringify : true,
             offset : 1,
             enableAltPlaceholders: true,
-            placeholderStructure: ["{","}"]
+            placeholderStructure: ["{","}"],
+            keyReplaceRegex: /\[\[([^\]]+)\]\]/g
         });
 
 
@@ -176,6 +196,12 @@ module.exports = function(grunt) {
                 }
 
                 if (!singleFile){
+                    grunt.log.writeln('Replace keys in messages');
+                    for (var key in singleFileStrings) {
+                      if (strings.hasOwnProperty(key)) {
+                        strings[key] = replaceKeysInMessage(strings[key], strings, options.keyReplaceRegex);
+                      }
+                    }
                     grunt.file.write(dest, (options.stringify) ? JSON.stringify(strings, null, (options.pretty) ? '   ':'') : strings );
                     grunt.log.writeln('JSON file(s) created: "' + dest +'"');
                 }
@@ -184,6 +210,12 @@ module.exports = function(grunt) {
 
 
             if (singleFile){
+                grunt.log.writeln('Replace keys in messages');
+                for (var key in singleFileStrings) {
+                  if (singleFileStrings.hasOwnProperty(key)) {
+                    singleFileStrings[key] = replaceKeysInMessage(singleFileStrings[key], singleFileStrings, options.keyReplaceRegex);
+                  }
+                }
                 grunt.file.write(f.dest, (options.stringify) ? JSON.stringify(singleFileStrings, null, (options.pretty) ? '   ':'') : singleFileStrings );
                 grunt.log.writeln('JSON file(s) created: "' + f.dest + '"');
             }
