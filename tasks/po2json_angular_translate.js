@@ -84,7 +84,8 @@ module.exports = function(grunt) {
             offset : 1,
             enableAltPlaceholders: true,
             placeholderStructure: ["{","}"],
-            keyReplaceRegex: /\[\[([^\]]+)\]\]/g
+            keyReplaceRegex: /\[\[([^\]]+)\]\]/g,
+            keyRegex: /[^\/]*(?=\.[^.]+($|\?))/
         });
 
 
@@ -94,17 +95,16 @@ module.exports = function(grunt) {
                 if (!grunt.file.exists(filepath)) {
                     grunt.log.warn('Po file "' + filepath + '" not found.');
                     return false;
-                } else {
+                }  else {
                     return true;
-
                 }
             });
+            
 
             if (filepaths.length === 0) {
                 grunt.log.warn('Destination (' + f.dest + ') not written because src files were empty.');
                 return;
             }
-
 
             if (options.cleanPrevStrings){
                 rmDir(f.dest);
@@ -113,19 +113,17 @@ module.exports = function(grunt) {
             var destPath = path.extname(f.dest);
             var dest;
             var singleFile = false;
-             var singleFileStrings = {};
+            var singleFileStrings = {};
+            var langKey = options.keyRegex.exec(f.dest)[0];
+            var scriptStart = "(function(g) {g." + langKey + "Resources = g." + langKey + "Resources || {};function apply(a,b) { for(var p in b) { if(b.hasOwnProperty(p)) { a[p] = b[p]; }}}apply(g." + langKey + "Resources, ";
+            var scriptEnd = ");}(window));";
 
             if (destPath !== ""){ //It is just one file, we should put everything there
                 singleFile = true;
             }
 
             filepaths.forEach(function(filepath){
-                if (! singleFile ){
-                    // Prepare the file name
-                    var filename = path.basename(filepath, path.extname(filepath));
-                    dest = path.join (f.dest, filename + ".json" );
-                }
-                // Read the file po content
+			    // Read the file po content
                 var file = grunt.file.read(filepath);
                 var catalog = po.parse(file);
                  var strings = {};
@@ -193,18 +191,6 @@ module.exports = function(grunt) {
                         }
                     }
                 }
-
-                if (!singleFile){
-                    grunt.log.writeln('Replace keys in messages');
-                    for (var key in singleFileStrings) {
-                      if (strings.hasOwnProperty(key)) {
-                        strings[key] = replaceKeysInMessage(strings[key], strings, options.keyReplaceRegex);
-                      }
-                    }
-                    grunt.file.write(dest, (options.stringify) ? JSON.stringify(strings, null, (options.pretty) ? '   ':'') : strings );
-                    grunt.log.writeln('JSON file(s) created: "' + dest +'"');
-                }
-
             });
 
 
@@ -215,7 +201,7 @@ module.exports = function(grunt) {
                     singleFileStrings[key] = replaceKeysInMessage(singleFileStrings[key], singleFileStrings, options.keyReplaceRegex);
                   }
                 }
-                grunt.file.write(f.dest, (options.stringify) ? JSON.stringify(singleFileStrings, null, (options.pretty) ? '   ':'') : singleFileStrings );
+                grunt.file.write(f.dest, (options.stringify) ? scriptStart + JSON.stringify(singleFileStrings, null, (options.pretty) ? '   ':'') + scriptEnd : scriptStart + singleFileStrings + scriptEnd );
                 grunt.log.writeln('JSON file(s) created: "' + f.dest + '"');
             }
         });
